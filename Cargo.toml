@@ -7,3 +7,5 @@ edition = "2018"
 
 [dependencies]
 ws = "0.9.1"
+chrono = "0.4.19"
+redis = "0.21.4"
