@@ -3,12 +3,7 @@ struct Server {
 }
 
 impl ws::Handler for Server {
-    fn on_open(&mut self, shake: ws::Handshake) -> ws::Result<()> {
-        if let Some(ip_addr) = shake.remote_addr()? {
-            println!("Connection opened from {}", ip_addr)
-        } else {
-            println!("Unable to obtain client's IP address")
-        }
+    fn on_open(&mut self, _shake: ws::Handshake) -> ws::Result<()> {
         Ok(())
     }
 
