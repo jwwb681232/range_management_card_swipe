@@ -8,7 +8,7 @@ impl ws::Handler for Server {
     }
 
     fn on_message(&mut self, msg: ws::Message) -> ws::Result<()> {
-        self.ws_sender.broadcast(msg.clone());
+        self.ws_sender.broadcast(msg).unwrap();
         Ok(())
     }
 }
