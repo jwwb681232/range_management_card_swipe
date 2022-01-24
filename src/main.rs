@@ -1,7 +1,6 @@
 use std::thread::{sleep, spawn};
 use std::time::Duration;
 use chrono::Local;
-use ws::{CloseCode, connect};
 use redis::Commands;
 
 struct Server {
@@ -54,6 +53,6 @@ fn main() {
 
     ws::listen("0.0.0.0:8085", |ws_sender| Server { ws_sender }).unwrap();
 
-    t1.join();
-    t2.join();
+    let _ = t1.join();
+    let _ = t2.join();
 }
