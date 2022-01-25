@@ -3,7 +3,6 @@ use std::thread::{sleep, spawn};
 use std::time::Duration;
 use chrono::Local;
 use redis::Commands;
-use redis::Value::Okay;
 
 struct Server {
     ws_sender: ws::Sender,
@@ -23,11 +22,13 @@ impl ws::Handler for Server {
 
 fn main() {
 
+    println!("\nStarted On ws://127.0.0.1:8085\n");
+
     let t1 = spawn(|| {
         let client = redis::Client::open("redis://127.0.0.1:6379").unwrap();
         let mut con = client.get_connection().unwrap();
 
-        let file_path = "README.md";
+        let file_path = "demo.txt";
         let mut has_file_notify = false;
         let mut pre = String::new();
         loop {
@@ -51,7 +52,7 @@ fn main() {
             file.read_to_string(&mut contents).unwrap();
 
             if pre != contents {
-                let _: () = con.publish("card_swipe",format!("{},{}",Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),contents)).unwrap();
+                let _: () = con.publish("card_swipe",format!("{}",contents)).unwrap();
                 pre = contents.clone();
             }
 
