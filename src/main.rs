@@ -26,11 +26,27 @@ fn main() {
         let client = redis::Client::open("redis://127.0.0.1:6379").unwrap();
         let mut con = client.get_connection().unwrap();
 
+        let file_path = "README.md";
+        let mut has_file_notify = false;
         let mut pre = String::new();
         loop {
             let mut contents = String::new();
 
-            let mut file = std::fs::File::open("README.md").unwrap();
+            let mut file =  match std::fs::File::open(file_path) {
+                Ok(f) => {
+                    has_file_notify = false;
+                    f
+                },
+                Err(e) => {
+                    if !has_file_notify {
+                        println!("[{} {} ]: {}",Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),e,file_path);
+                        has_file_notify = true;
+                    }
+                    sleep(Duration::from_millis(350));
+                    continue;
+                }
+            };
+
             file.read_to_string(&mut contents).unwrap();
 
             if pre != contents {
