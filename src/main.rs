@@ -1,3 +1,4 @@
+use std::io::Read;
 use std::thread::{sleep, spawn};
 use std::time::Duration;
 use chrono::Local;
@@ -24,9 +25,20 @@ fn main() {
     let t1 = spawn(|| {
         let client = redis::Client::open("redis://127.0.0.1:6379").unwrap();
         let mut con = client.get_connection().unwrap();
+
+        let mut pre = String::new();
         loop {
-            //todo read file and set file empty
-            let _: () = con.publish("card_swipe",Local::now().format("%Y-%m-%d %H:%M:%S").to_string()).unwrap();
+            let mut contents = String::new();
+
+            let mut file = std::fs::File::open("README.md").unwrap();
+            file.read_to_string(&mut contents).unwrap();
+
+            if pre != contents {
+                let _: () = con.publish("card_swipe",format!("{},{}",Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),contents)).unwrap();
+                pre = contents.clone();
+            }
+
+
             sleep(Duration::from_millis(350));
         }
     });
