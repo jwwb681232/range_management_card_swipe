@@ -1,39 +1,87 @@
-use std::sync::{Mutex, Arc, mpsc::channel};
-use std::thread::spawn;
+use std::io::Read;
+use std::thread::{sleep, spawn};
+use std::time::Duration;
+use chrono::Local;
+use redis::Commands;
+use redis::Value::Okay;
 
 struct Server {
     ws_sender: ws::Sender,
-    tx: Arc<Mutex<std::sync::mpsc::Sender<String>>>,
 }
 
 impl ws::Handler for Server {
-    fn on_open(&mut self, shake: ws::Handshake) -> ws::Result<()> {
-        if let Some(ip_addr) = shake.remote_addr()? {
-            println!("Connection opened from {}", ip_addr)
-        } else {
-            println!("Unable to obtain client's IP address")
-        }
+    fn on_open(&mut self, _shake: ws::Handshake) -> ws::Result<()> {
         Ok(())
     }
 
     fn on_message(&mut self, msg: ws::Message) -> ws::Result<()> {
-        self.ws_sender.broadcast(msg.clone());
-        self.tx.lock().unwrap().send(msg.to_string());
+        self.ws_sender.broadcast(msg).unwrap();
+
         Ok(())
     }
 }
 
 fn main() {
-    let (tx, rx) = channel();
 
-    let x = Arc::new(Mutex::new(tx));
+    let t1 = spawn(|| {
+        let client = redis::Client::open("redis://127.0.0.1:6379").unwrap();
+        let mut con = client.get_connection().unwrap();
 
-    spawn(move ||{
+        let file_path = "README.md";
+        let mut has_file_notify = false;
+        let mut pre = String::new();
         loop {
-            let received = rx.recv().unwrap();
-            println!("Got: {}", received);
+            let mut contents = String::new();
+
+            let mut file =  match std::fs::File::open(file_path) {
+                Ok(f) => {
+                    has_file_notify = false;
+                    f
+                },
+                Err(e) => {
+                    if !has_file_notify {
+                        println!("[{} {} ]: {}",Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),e,file_path);
+                        has_file_notify = true;
+                    }
+                    sleep(Duration::from_millis(350));
+                    continue;
+                }
+            };
+
+            file.read_to_string(&mut contents).unwrap();
+
+            if pre != contents {
+                let _: () = con.publish("card_swipe",format!("{},{}",Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),contents)).unwrap();
+                pre = contents.clone();
+            }
+
+
+            sleep(Duration::from_millis(350));
         }
     });
 
-    ws::listen("0.0.0.0:8085", |ws_sender| Server { ws_sender, tx: x.clone()}).unwrap();
+    let t2 = spawn(|| {
+        let mut write_con = redis::Client::open("redis://127.0.0.1:6379").unwrap().get_connection().unwrap();
+        let mut write_pubsub = write_con.as_pubsub();
+        write_pubsub.subscribe("card_swipe").unwrap();
+
+        loop {
+            let msg = write_pubsub.get_message().unwrap();
+            let payload : String = msg.get_payload().unwrap();
+
+            ws::connect("ws://127.0.0.1:8085", move|out| {
+                out.send(payload.to_owned()).unwrap();
+                move |_| {
+                    out.close(ws::CloseCode::Normal).unwrap();
+                    Ok(())
+                }
+            }).unwrap();
+
+        }
+    });
+
+    ws::listen("0.0.0.0:8085", |ws_sender| Server { ws_sender }).unwrap();
+
+    let _ = t1.join();
+    let _ = t2.join();
 }
