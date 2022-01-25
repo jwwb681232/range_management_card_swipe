@@ -3,6 +3,7 @@ use std::thread::{sleep, spawn};
 use std::time::Duration;
 use chrono::Local;
 use redis::Commands;
+use redis::Value::Okay;
 
 struct Server {
     ws_sender: ws::Sender,
