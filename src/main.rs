@@ -51,9 +51,9 @@ fn main() {
 
             file.read_to_string(&mut contents).unwrap();
 
-            let res = contents.split(";").collect::<Vec<&str>>();
-            let res = res.get(res.len() - 2).unwrap();
-
+            let mut res = contents.split(";").collect::<Vec<&str>>();
+            res.retain(|&x| x != "\r\n");
+            let res = res.get(res.len() - 1).unwrap();
             if &pre != res {
                 let _: () = con.publish("card_swipe",format!("{}",res)).unwrap();
                 pre = res.to_string();
