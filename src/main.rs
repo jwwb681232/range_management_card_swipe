@@ -28,7 +28,7 @@ fn main() {
         let client = redis::Client::open("redis://127.0.0.1:6379").unwrap();
         let mut con = client.get_connection().unwrap();
 
-        let file_path = "demo.txt";
+        let file_path = "Deck1_Panel1 Read From PLC.txt";
         let mut has_file_notify = false;
         let mut pre = String::new();
         loop {
