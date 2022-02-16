@@ -4,6 +4,10 @@ use std::time::Duration;
 use chrono::Local;
 use redis::Commands;
 
+// 1、替换 Deck1_Panel1 Read From PLC.txt 为 Deck1_Panel2 Read From PLC.txt
+// 2、替换 8085 为 8087
+// 3、替换 card_swipe_cqb 为 card_swipe_25m
+
 struct Server {
     ws_sender: ws::Sender,
 }
@@ -55,7 +59,7 @@ fn main() {
             let res = res.get(res.len() - 2).unwrap();
 
             if &pre != res {
-                let _: () = con.publish("card_swipe",format!("{}",res)).unwrap();
+                let _: () = con.publish("card_swipe_cqb",format!("{}",res)).unwrap();
                 pre = res.to_string();
             }
 
@@ -67,7 +71,7 @@ fn main() {
     let t2 = spawn(|| {
         let mut write_con = redis::Client::open("redis://127.0.0.1:6379").unwrap().get_connection().unwrap();
         let mut write_pubsub = write_con.as_pubsub();
-        write_pubsub.subscribe("card_swipe").unwrap();
+        write_pubsub.subscribe("card_swipe_cqb").unwrap();
 
         loop {
             let msg = write_pubsub.get_message().unwrap();
