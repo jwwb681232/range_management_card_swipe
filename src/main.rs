@@ -4,9 +4,9 @@ use std::time::Duration;
 use chrono::Local;
 use redis::Commands;
 
-// 1、替换 Deck1_Panel2 Read From PLC.txt 为 Deck1_Panel2 Read From PLC.txt
-// 2、替换 8087 为 8087
-// 3、替换 card_swipe_25m 为 card_swipe_25m
+// 1、替换 Deck1_Panel1 Read From PLC.txt 为 Deck1_Panel2 Read From PLC.txt
+// 2、替换 8085 为 8087
+// 3、替换 card_swipe_cqb 为 card_swipe_25m
 
 struct Server {
     ws_sender: ws::Sender,
@@ -26,13 +26,13 @@ impl ws::Handler for Server {
 
 fn main() {
 
-    println!("\nStarted On ws://127.0.0.1:8087\n");
+    println!("\nStarted On ws://127.0.0.1:8085\n");
 
     let t1 = spawn(|| {
         let client = redis::Client::open("redis://127.0.0.1:6379").unwrap();
         let mut con = client.get_connection().unwrap();
 
-        let file_path = "Deck1_Panel2 Read From PLC.txt";
+        let file_path = "Deck1_Panel1 Read From PLC.txt";
         let mut has_file_notify = false;
         let mut pre = String::new();
         loop {
@@ -53,13 +53,19 @@ fn main() {
                 }
             };
 
-            file.read_to_string(&mut contents).unwrap();
+            file.read_to_string(&mut contents).unwrap_or_default();
+
+            if contents.len() <=0 {
+                pre = "".to_string();
+                has_file_notify = true;
+                continue;
+            }
 
             let res = contents.split(";").collect::<Vec<&str>>();
             let res = res.get(res.len() - 2).unwrap();
 
             if &pre != res {
-                let _: () = con.publish("card_swipe_25m",format!("{}",res)).unwrap();
+                let _: () = con.publish("card_swipe_cqb",format!("{}",res)).unwrap();
                 pre = res.to_string();
             }
 
@@ -71,13 +77,13 @@ fn main() {
     let t2 = spawn(|| {
         let mut write_con = redis::Client::open("redis://127.0.0.1:6379").unwrap().get_connection().unwrap();
         let mut write_pubsub = write_con.as_pubsub();
-        write_pubsub.subscribe("card_swipe_25m").unwrap();
+        write_pubsub.subscribe("card_swipe_cqb").unwrap();
 
         loop {
             let msg = write_pubsub.get_message().unwrap();
             let payload : String = msg.get_payload().unwrap();
 
-            ws::connect("ws://127.0.0.1:8087", move|out| {
+            ws::connect("ws://127.0.0.1:8085", move|out| {
                 out.send(payload.to_owned()).unwrap();
                 move |_| {
                     out.close(ws::CloseCode::Normal).unwrap();
@@ -88,7 +94,7 @@ fn main() {
         }
     });
 
-    ws::listen("0.0.0.0:8087", |ws_sender| Server { ws_sender }).unwrap();
+    ws::listen("0.0.0.0:8085", |ws_sender| Server { ws_sender }).unwrap();
 
     let _ = t1.join();
     let _ = t2.join();
