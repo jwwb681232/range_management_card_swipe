@@ -28,13 +28,13 @@ impl ws::Handler for Server {
 
 fn main() {
 
-    println!("\n25M Range Card Swipe Started On ws://127.0.0.1:8087\n");
+    println!("\nCQB Card Swipe Started On ws://127.0.0.1:8085\n");
 
     let t1 = spawn(|| {
         let client = redis::Client::open("redis://127.0.0.1:6379").unwrap();
         let mut con = client.get_connection().unwrap();
 
-        let file_path = "Deck1_Panel1 Read From PLC.txt";
+        let file_path = "Deck1_Panel2 Read From PLC.txt";
         let mut has_file_notify = false;
         let mut pre = String::new();
         loop {
@@ -64,10 +64,10 @@ fn main() {
             }
 
             let res = contents.split(";").collect::<Vec<&str>>();
-            let res = res.get(29).unwrap();
+            let res = res.get(18).unwrap();
 
             if &pre != res {
-                let _: () = con.publish("card_swipe_25m",format!("{}",res)).unwrap();
+                let _: () = con.publish("card_swipe_cqb",format!("{}",res)).unwrap();
                 pre = res.to_string();
                 println!("[{}]: {}",Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),pre);
             }
@@ -80,13 +80,13 @@ fn main() {
     let t2 = spawn(|| {
         let mut write_con = redis::Client::open("redis://127.0.0.1:6379").unwrap().get_connection().unwrap();
         let mut write_pubsub = write_con.as_pubsub();
-        write_pubsub.subscribe("card_swipe_25m").unwrap();
+        write_pubsub.subscribe("card_swipe_cqb").unwrap();
 
         loop {
             let msg = write_pubsub.get_message().unwrap();
             let payload : String = msg.get_payload().unwrap();
 
-            ws::connect("ws://127.0.0.1:8087", move|out| {
+            ws::connect("ws://127.0.0.1:8085", move|out| {
                 out.send(payload.to_owned()).unwrap();
                 move |_| {
                     out.close(ws::CloseCode::Normal).unwrap();
@@ -97,7 +97,7 @@ fn main() {
         }
     });
 
-    ws::listen("0.0.0.0:8087", |ws_sender| Server { ws_sender }).unwrap();
+    ws::listen("0.0.0.0:8085", |ws_sender| Server { ws_sender }).unwrap();
 
     let _ = t1.join();
     let _ = t2.join();
