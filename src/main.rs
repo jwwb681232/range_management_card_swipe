@@ -3,6 +3,8 @@ use std::thread::{sleep, spawn};
 use std::time::Duration;
 use chrono::Local;
 use redis::Commands;
+// CQB:         deck1_panel2    19      8085
+// 25M Range:   deck1_panel1    30      8087
 
 // 1、替换 Deck1_Panel1 Read From PLC.txt 为 Deck1_Panel2 Read From PLC.txt
 // 2、替换 8085 为 8087
@@ -26,7 +28,7 @@ impl ws::Handler for Server {
 
 fn main() {
 
-    println!("\nStarted On ws://127.0.0.1:8085\n");
+    println!("\n25M Range Card Swipe Started On ws://127.0.0.1:8087\n");
 
     let t1 = spawn(|| {
         let client = redis::Client::open("redis://127.0.0.1:6379").unwrap();
@@ -62,11 +64,12 @@ fn main() {
             }
 
             let res = contents.split(";").collect::<Vec<&str>>();
-            let res = res.get(res.len() - 2).unwrap();
+            let res = res.get(29).unwrap();
 
             if &pre != res {
-                let _: () = con.publish("card_swipe_cqb",format!("{}",res)).unwrap();
+                let _: () = con.publish("card_swipe_25m",format!("{}",res)).unwrap();
                 pre = res.to_string();
+                println!("[{}]: {}",Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),pre);
             }
 
 
@@ -77,13 +80,13 @@ fn main() {
     let t2 = spawn(|| {
         let mut write_con = redis::Client::open("redis://127.0.0.1:6379").unwrap().get_connection().unwrap();
         let mut write_pubsub = write_con.as_pubsub();
-        write_pubsub.subscribe("card_swipe_cqb").unwrap();
+        write_pubsub.subscribe("card_swipe_25m").unwrap();
 
         loop {
             let msg = write_pubsub.get_message().unwrap();
             let payload : String = msg.get_payload().unwrap();
 
-            ws::connect("ws://127.0.0.1:8085", move|out| {
+            ws::connect("ws://127.0.0.1:8087", move|out| {
                 out.send(payload.to_owned()).unwrap();
                 move |_| {
                     out.close(ws::CloseCode::Normal).unwrap();
@@ -94,7 +97,7 @@ fn main() {
         }
     });
 
-    ws::listen("0.0.0.0:8085", |ws_sender| Server { ws_sender }).unwrap();
+    ws::listen("0.0.0.0:8087", |ws_sender| Server { ws_sender }).unwrap();
 
     let _ = t1.join();
     let _ = t2.join();
