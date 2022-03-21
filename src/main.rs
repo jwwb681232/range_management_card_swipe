@@ -31,7 +31,7 @@ fn main() {
     println!("\n25M Range Card Swipe Started On ws://127.0.0.1:8087\n");
 
     let t1 = spawn(|| {
-        let client = redis::Client::open("redis://127.0.0.1:6379").unwrap();
+        let client = redis::Client::open("redis://127.0.0.1:63790").unwrap();
         let mut con = client.get_connection().unwrap();
 
         let file_path = "Deck1_Panel1 Read From PLC.txt";
@@ -78,7 +78,7 @@ fn main() {
     });
 
     let t2 = spawn(|| {
-        let mut write_con = redis::Client::open("redis://127.0.0.1:6379").unwrap().get_connection().unwrap();
+        let mut write_con = redis::Client::open("redis://127.0.0.1:63790").unwrap().get_connection().unwrap();
         let mut write_pubsub = write_con.as_pubsub();
         write_pubsub.subscribe("card_swipe_25m").unwrap();
 
